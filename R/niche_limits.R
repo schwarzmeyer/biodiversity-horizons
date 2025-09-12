@@ -1,58 +1,108 @@
 #' Calculate thermal niche limits for each species
 #'
-#' @param species.data List of grid cell IDs for each species
-#' @param climate.data Data frame of climate data by grid cell
-#' @param sd.threshold Number of standard deviations used to define outliers
-#' @param year.min Minimum year threshold for filtering climate data. When specified, only data from this year onward will be included (inclusive). If NULL, no lower year boundary is applied.
-#' @param year.max Maximum year threshold for filtering climate data. When specified, only data up to and including this year will be included. If NULL, no upper year boundary is applied.
+#' @param species.data A vector of grid cell IDs for each species
+#' @param climate.data  A tibble or data frame with climate data
+#' @param sd.threshold Optional. A numeric value specifying the number of standard deviations used to define outliers
 #' @return A tibble with upper and lower niche limits
 #' @importFrom dplyr filter select rename group_by mutate summarise
 #' @importFrom stats na.omit sd
 #' @export
 
-niche_limits <- function(species.data, climate.data, sd.threshold = NULL, year.min = NULL, year.max = NULL){
+
+# climate.data <- climate_data |> select(-member)
+# species.data <- readRDS(here("data/processed/species/range_maps_grid_cells/spp_data.rds"))
+# species.data <- species_data[[1]]
+# sd.threshold <- 3
+
+niche_limits <- function(species.data, 
+                         climate.data, 
+                         sd.threshold = NULL, 
+                         percentiles = c(0, 1), 
+                         type = 7){
+
+  # Check if percentiles argument is valid
+  if(!is.numeric(percentiles) || length(percentiles) != 2) {
+    stop("'percentiles' must be a numeric vector of length 2 e.g., c(0.01, 0.99).", call. = F)
+  }
+  # Ensure lower percentile is first
+  percentiles <- sort(percentiles)
   
-  if(!is.null(year.max)) climate.data <- climate.data %>% filter(year <= year.max)
-  if(!is.null(year.min)) climate.data <- climate.data %>% filter(year >= year.min)
-  
-  if(length(species.data) == 1) {
+  # If the species occur in a single grid cell, the function returns the monthly value
+    if(length(species.data) == 1) {
     
-    result <- climate.data %>% 
-      filter(world_id %in% species.data) %>% 
-      dplyr::select(-world_id) %>% 
-      rename(niche_max = max_temp,
-             niche_min = min_temp)
+    result <- climate.data |> 
+      filter(world_id %in% species.data) |> 
+      dplyr::select(-world_id) |> 
+      rename(niche_max = max_value,
+             niche_min = min_value)
+    
+    return(result)
+    
+    } 
+  
+  if("month" %in% names(climate.data)){
+    
+    if(is.null(sd.threshold)){
+      
+      result <- climate.data |> 
+        filter(world_id %in% species.data) |> 
+        dplyr::select(-world_id) |> 
+        na.omit() |> 
+        # group_by(member, month) |>
+        group_by(month) |>
+        summarise(niche_max = quantile(max_value, probs = percentiles[2], na.rm = TRUE, type = type), 
+                  niche_min = quantile(min_value, probs = percentiles[1], na.rm = TRUE, type = type),
+                  .groups = "drop") 
+      
+    } else {
+      
+      result <- climate.data |> 
+        filter(world_id %in% species.data) |> 
+        dplyr::select(-world_id) |> 
+        na.omit() |> 
+        # group_by(member, month) |>
+        group_by(month) |>
+        mutate(mean_val_max = mean(max_value, na.rm = TRUE),
+               sd_val_max = sd(max_value, na.rm = TRUE),
+               mean_val_min = mean(min_value, na.rm = TRUE),
+               sd_val_min = sd(min_value, na.rm = TRUE),
+               is_outlier = max_value > (mean_val_max + sd.threshold * sd_val_max) | min_value < (mean_val_min - sd.threshold * sd_val_min)) |>
+        filter(!is_outlier) |>
+        summarise(niche_max = quantile(max_value, probs = percentiles[2], na.rm = TRUE, type = type), 
+                  niche_min = quantile(min_value, probs = percentiles[1], na.rm = TRUE, type = type),
+                  .groups = "drop") 
+    }
+    
     
   } else {
     
     if(is.null(sd.threshold)){
       
-      result <- climate.data %>% 
-        filter(world_id %in% species.data) %>% 
-        dplyr::select(-world_id) %>% 
-        na.omit() %>% 
-        group_by(member, month) %>%
-        summarise(niche_max = max(max_temp, na.rm = TRUE),
-                  niche_min = min(max_temp, na.rm = TRUE),
+      result <- climate.data |> 
+        filter(world_id %in% species.data) |> 
+        dplyr::select(-world_id) |> 
+        na.omit() |> 
+        summarise(niche_max = quantile(max_value, probs = percentiles[2], na.rm = TRUE, type = type), 
+                  niche_min = quantile(min_value, probs = percentiles[1], na.rm = TRUE, type = type),
                   .groups = "drop") 
       
     } else {
       
-      result <- climate.data %>% 
-        filter(world_id %in% species.data) %>% 
-        dplyr::select(-world_id) %>% 
-        na.omit() %>% 
-        group_by(member, month) %>%
-        mutate(mean_val_max = mean(max_temp, na.rm = TRUE),
-               sd_val_max = sd(max_temp, na.rm = TRUE),
-               mean_val_min = mean(min_temp, na.rm = TRUE),
-               sd_val_min = sd(min_temp, na.rm = TRUE),
-               is_outlier = max_temp > (mean_val_max + sd.threshold * sd_val_max) | min_temp < (mean_val_min - sd.threshold * sd_val_min)) %>%
-        filter(!is_outlier) %>%
-        summarise(niche_max = max(max_temp, na.rm = TRUE),
-                  niche_min = min(max_temp, na.rm = TRUE),
+      result <- climate.data |> 
+        filter(world_id %in% species.data) |> 
+        dplyr::select(-world_id) |> 
+        na.omit() |> 
+        mutate(mean_val_max = mean(max_value, na.rm = TRUE),
+               sd_val_max = sd(max_value, na.rm = TRUE),
+               mean_val_min = mean(min_value, na.rm = TRUE),
+               sd_val_min = sd(min_value, na.rm = TRUE),
+               is_outlier = max_value > (mean_val_max + sd.threshold * sd_val_max) | min_value < (mean_val_min - sd.threshold * sd_val_min)) |>
+        filter(!is_outlier) |>
+        summarise(niche_max = quantile(max_value, probs = percentiles[2], na.rm = TRUE, type = type), 
+                  niche_min = quantile(min_value, probs = percentiles[1], na.rm = TRUE, type = type),
                   .groups = "drop") 
     }
+    
   }
   
   return(result)
