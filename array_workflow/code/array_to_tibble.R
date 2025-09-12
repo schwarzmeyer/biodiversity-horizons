@@ -92,24 +92,24 @@ array_to_tibble <- function(array.data,
   # should the data be masked?
   if(!is.null(mask)){
     
-    raster.template <- raster.template %>% 
+    raster.template <- raster.template |> 
       terra::mask(world, touches = TRUE) 
     
   }
   
   # create a tibble with the world_id
-  id_tbl <- raster.template %>% 
-    as.data.frame(xy = T) %>% 
-    as_tibble() %>% 
+  id_tbl <- raster.template |> 
+    as.data.frame(xy = T) |> 
+    as_tibble() |> 
     rename_with(~c("lon", "lat", "world_id")) 
   
   # join the world_id to the temp_tbl
-  temp_tbl <- temp_tbl %>%
-    left_join(id_tbl, by = c("lon", "lat")) %>%
-    # dplyr::select(member, world_id, year, month, value) %>% 
-    # dplyr::arrange(member, world_id, year, month) %>% 
-    dplyr::select(world_id, year, month, value) %>%
-    dplyr::arrange(world_id, year, month) %>%
+  temp_tbl <- temp_tbl |>
+    left_join(id_tbl, by = c("lon", "lat")) |>
+    # dplyr::select(member, world_id, year, month, value) |> 
+    # dplyr::arrange(member, world_id, year, month) |> 
+    dplyr::select(world_id, year, month, value) |>
+    dplyr::arrange(world_id, year, month) |>
     na.omit()
   
   return(temp_tbl)

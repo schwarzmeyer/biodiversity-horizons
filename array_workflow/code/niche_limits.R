@@ -9,7 +9,7 @@
 #' @export
 
 
-# climate.data <- climate_data %>% select(-member)
+# climate.data <- climate_data |> select(-member)
 # species.data <- readRDS(here("data/processed/species/range_maps_grid_cells/spp_data.rds"))
 # species.data <- species_data[[1]]
 # sd.threshold <- 3
@@ -30,9 +30,9 @@ niche_limits <- function(species.data,
   # If the species occur in a single grid cell, the function returns the monthly value
     if(length(species.data) == 1) {
     
-    result <- climate.data %>% 
-      filter(world_id %in% species.data) %>% 
-      dplyr::select(-world_id) %>% 
+    result <- climate.data |> 
+      filter(world_id %in% species.data) |> 
+      dplyr::select(-world_id) |> 
       rename(niche_max = max_value,
              niche_min = min_value)
     
@@ -44,30 +44,30 @@ niche_limits <- function(species.data,
     
     if(is.null(sd.threshold)){
       
-      result <- climate.data %>% 
-        filter(world_id %in% species.data) %>% 
-        dplyr::select(-world_id) %>% 
-        na.omit() %>% 
-        # group_by(member, month) %>%
-        group_by(month) %>%
+      result <- climate.data |> 
+        filter(world_id %in% species.data) |> 
+        dplyr::select(-world_id) |> 
+        na.omit() |> 
+        # group_by(member, month) |>
+        group_by(month) |>
         summarise(niche_max = quantile(max_value, probs = percentiles[2], na.rm = TRUE, type = type), 
                   niche_min = quantile(min_value, probs = percentiles[1], na.rm = TRUE, type = type),
                   .groups = "drop") 
       
     } else {
       
-      result <- climate.data %>% 
-        filter(world_id %in% species.data) %>% 
-        dplyr::select(-world_id) %>% 
-        na.omit() %>% 
-        # group_by(member, month) %>%
-        group_by(month) %>%
+      result <- climate.data |> 
+        filter(world_id %in% species.data) |> 
+        dplyr::select(-world_id) |> 
+        na.omit() |> 
+        # group_by(member, month) |>
+        group_by(month) |>
         mutate(mean_val_max = mean(max_value, na.rm = TRUE),
                sd_val_max = sd(max_value, na.rm = TRUE),
                mean_val_min = mean(min_value, na.rm = TRUE),
                sd_val_min = sd(min_value, na.rm = TRUE),
-               is_outlier = max_value > (mean_val_max + sd.threshold * sd_val_max) | min_value < (mean_val_min - sd.threshold * sd_val_min)) %>%
-        filter(!is_outlier) %>%
+               is_outlier = max_value > (mean_val_max + sd.threshold * sd_val_max) | min_value < (mean_val_min - sd.threshold * sd_val_min)) |>
+        filter(!is_outlier) |>
         summarise(niche_max = quantile(max_value, probs = percentiles[2], na.rm = TRUE, type = type), 
                   niche_min = quantile(min_value, probs = percentiles[1], na.rm = TRUE, type = type),
                   .groups = "drop") 
@@ -78,26 +78,26 @@ niche_limits <- function(species.data,
     
     if(is.null(sd.threshold)){
       
-      result <- climate.data %>% 
-        filter(world_id %in% species.data) %>% 
-        dplyr::select(-world_id) %>% 
-        na.omit() %>% 
+      result <- climate.data |> 
+        filter(world_id %in% species.data) |> 
+        dplyr::select(-world_id) |> 
+        na.omit() |> 
         summarise(niche_max = quantile(max_value, probs = percentiles[2], na.rm = TRUE, type = type), 
                   niche_min = quantile(min_value, probs = percentiles[1], na.rm = TRUE, type = type),
                   .groups = "drop") 
       
     } else {
       
-      result <- climate.data %>% 
-        filter(world_id %in% species.data) %>% 
-        dplyr::select(-world_id) %>% 
-        na.omit() %>% 
+      result <- climate.data |> 
+        filter(world_id %in% species.data) |> 
+        dplyr::select(-world_id) |> 
+        na.omit() |> 
         mutate(mean_val_max = mean(max_value, na.rm = TRUE),
                sd_val_max = sd(max_value, na.rm = TRUE),
                mean_val_min = mean(min_value, na.rm = TRUE),
                sd_val_min = sd(min_value, na.rm = TRUE),
-               is_outlier = max_value > (mean_val_max + sd.threshold * sd_val_max) | min_value < (mean_val_min - sd.threshold * sd_val_min)) %>%
-        filter(!is_outlier) %>%
+               is_outlier = max_value > (mean_val_max + sd.threshold * sd_val_max) | min_value < (mean_val_min - sd.threshold * sd_val_min)) |>
+        filter(!is_outlier) |>
         summarise(niche_max = quantile(max_value, probs = percentiles[2], na.rm = TRUE, type = type), 
                   niche_min = quantile(min_value, probs = percentiles[1], na.rm = TRUE, type = type),
                   .groups = "drop") 

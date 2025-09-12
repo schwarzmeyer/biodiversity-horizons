@@ -15,7 +15,11 @@
 # sd.threshold <- 3
 # year.max <- 2000
 
-climate_limits <- function(climate.data, sd.threshold = NULL, temporal.resolution = NULL, year.min = NULL, year.max = NULL){
+climate_limits <- function(climate.data, 
+                           sd.threshold = NULL, 
+                           temporal.resolution = NULL, 
+                           year.min = NULL, 
+                           year.max = NULL){
   
   # Input checks
   if(is.null(temporal.resolution)) stop("Provide the temporal resolution:  'yearly' or 'monthly'", call. = F)
@@ -47,36 +51,36 @@ climate_limits <- function(climate.data, sd.threshold = NULL, temporal.resolutio
   }
   
 
-  if(!is.null(year.max)) climate.data <- climate.data %>% filter(year <= year.max)
-  if(!is.null(year.min)) climate.data <- climate.data %>% filter(year >= year.min)
+  if(!is.null(year.max)) climate.data <- climate.data |> filter(year <= year.max)
+  if(!is.null(year.min)) climate.data <- climate.data |> filter(year >= year.min)
   
   
   if(temporal.resolution == "monthly"){
     
     if(!is.null(sd.threshold)){
       
-      result <- climate.data %>% 
-        # group_by(member, world_id, month) %>%
-        group_by(world_id, month) %>%
+      result <- climate.data |> 
+        # group_by(member, world_id, month) |>
+        group_by(world_id, month) |>
         mutate(mean_val = mean(value, na.rm = TRUE),
                sd_val = sd(value, na.rm = TRUE),
-               is_outlier = value > (mean_val + sd.threshold * sd_val) | value < (mean_val - sd.threshold * sd_val)) %>%
-        filter(!is_outlier) %>%
+               is_outlier = value > (mean_val + sd.threshold * sd_val) | value < (mean_val - sd.threshold * sd_val)) |>
+        filter(!is_outlier) |>
         summarise(max_value = max(value, na.rm = TRUE),
                   min_value = min(value, na.rm = TRUE),
-                  .groups = "drop") %>% 
+                  .groups = "drop") |> 
         # arrange(member, world_id, month) 
         arrange(world_id, month)
       
       
     } else {
       
-      result <- climate.data %>% 
-        # group_by(member, world_id, month) %>%
-        group_by(world_id, month) %>%
+      result <- climate.data |> 
+        # group_by(member, world_id, month) |>
+        group_by(world_id, month) |>
         summarise(max_value = max(value, na.rm = TRUE),
                   min_value = min(value, na.rm = TRUE),
-                  .groups = "drop") %>% 
+                  .groups = "drop") |> 
         # arrange(member, world_id, month) 
         arrange(world_id, month)
       
@@ -87,28 +91,28 @@ climate_limits <- function(climate.data, sd.threshold = NULL, temporal.resolutio
     
     if(!is.null(sd.threshold)){
       
-      result <- climate.data %>% 
-        # group_by(member, world_id, month) %>%
-        group_by(world_id) %>%
+      result <- climate.data |> 
+        # group_by(member, world_id, month) |>
+        group_by(world_id) |>
         mutate(mean_val = mean(value, na.rm = TRUE),
                sd_val = sd(value, na.rm = TRUE),
-               is_outlier = value > (mean_val + sd.threshold * sd_val) | value < (mean_val - sd.threshold * sd_val)) %>%
-        filter(!is_outlier) %>%
+               is_outlier = value > (mean_val + sd.threshold * sd_val) | value < (mean_val - sd.threshold * sd_val)) |>
+        filter(!is_outlier) |>
         summarise(max_value = max(value, na.rm = TRUE),
                   min_value = min(value, na.rm = TRUE),
-                  .groups = "drop") %>% 
+                  .groups = "drop") |> 
         # arrange(member, world_id, month) 
         arrange(world_id)
       
       
     } else {
       
-      result <- climate.data %>% 
-        # group_by(member, world_id, month) %>%
-        group_by(world_id) %>%
+      result <- climate.data |> 
+        # group_by(member, world_id, month) |>
+        group_by(world_id) |>
         summarise(max_value = max(value, na.rm = TRUE),
                   min_value = min(value, na.rm = TRUE),
-                  .groups = "drop") %>% 
+                  .groups = "drop") |> 
         # arrange(member, world_id, month) 
         arrange(world_id)
       
