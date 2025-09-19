@@ -149,13 +149,11 @@ version.py
 # tier_1 file that exceedes 25Mb
 tier_1/data/climate/historical_array.rds
 
-<<<<<<< HEAD
+
 outputs/
 
 *.DS_Store
 
 # Ignore processed species files
 data-raw/bien_ranges/processed/
-=======
-array_workflow/data/
->>>>>>> 0d3c0ac (WIP before syncing with origin)
+
