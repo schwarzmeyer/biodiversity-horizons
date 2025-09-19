@@ -1,41 +1,120 @@
 #' Calculate species exposure to climate changes
 #'
-#' @param data Data for a single species
-#' @param species_range List of grid cell IDs for each species
-#' @param climate_data Data frame of climate data by grid cell
-#' @param niche Niche limits for each species
+#' @param species.names Vector with the name of the species
+#' @param species.data List of grid cell IDs for each species
+#' @param climate.data Data frame of climate data by grid cell
+#' @param niche.data Niche limits for each species
+#' @param month.specific If TRUE, the function calculates month-specific exposure. If FALSE, it will calculate exposure based on the highest monthly value.
+#' @param return.magnitude If TRUE, the function returns the numeric difference by which the thermal threshold was exceeded. If FALSE, it returns a binary output: 1 for exposure, 0 otherwise
 #' @return A data frame with exposure data
-#' @importFrom dplyr filter mutate across relocate case_when
+#' @importFrom dplyr group_by summarise
 #' @export
-exposure <- function(data, species_range, climate_data, niche) {
-  # Get data for the current species
-  spp_data <- species_range[[data]]
-  spp_name <- names(species_range)[[data]]
+#' 
 
-  # Filter climate data based on type of spp_data
-  spp_matrix <- if (is.vector(spp_data)) {
-    climate_data %>% filter(world_id %in% spp_data)
+
+
+exposure <- function(species.names, 
+                     species.data, 
+                     climate.data, 
+                     niche.data, 
+                     month.specific = NULL, 
+                     return.magnitude = TRUE, 
+                     long.format = FALSE){
+  
+  if("month" %in% names(climate.data) != "month" %in% names(niche.data)) stop("`month` present only in one dataset.", call. = FALSE)
+  if("month" %in% names(climate.data) && is.null(month.specific)) stop("`month` column detected. Set `month.specific` argument.", call. = FALSE)
+  
+  spp_world_id <- species.data[[species.names]]
+  spp_matrix <- climate.data[climate.data$world_id %in% spp_world_id,] |> na.omit()
+  spp_niche <- niche.data[niche.data$species == species.names,]
+  
+  if(nrow(spp_niche) == 0) return(NULL)
+  
+  # If the temporal resolution of the climate data is monthly
+  if("month" %in% names(climate.data)) {
+    
+    # if the analyses should be month-specific
+    if(month.specific) {
+      
+      merged <- merge(spp_matrix, spp_niche, by = "month")
+      
+      merged$exposure_max <- as.integer(pmax(merged$value - merged$niche_max, 0))
+      merged$exposure_min <- as.integer(pmin(merged$value - merged$niche_min, 0))
+      merged$species <- factor(species.names)
+      
+      if(!return.magnitude) {
+        
+        merged$exposure_max <- ifelse(merged$exposure_max == 0, 0L, 1L)
+        merged$exposure_min <- ifelse(merged$exposure_min == 0, 0L, 1L)
+        
+      }
+      
+      result <- merged[, c("species", "world_id", "year", "month", "exposure_max", "exposure_min")] 
+      
+      return(result)
+      
+    } 
+    
+    if(!month.specific) {
+      
+      niche <- spp_niche |> 
+        summarise(niche_max = max(niche_max),
+                  niche_min = min(niche_min))
+      
+      merged <- merge(spp_matrix, niche)
+      
+      merged$exposure_max <- as.integer(pmax(merged$value - merged$niche_max, 0))
+      merged$exposure_min <- as.integer(pmin(merged$value - merged$niche_min, 0))
+      merged$species <- factor(species.names)
+      
+      if(!return.magnitude) {
+        
+        merged$exposure_max <- ifelse(merged$exposure_max == 0, 0L, 1L)
+        merged$exposure_min <- ifelse(merged$exposure_min == 0, 0L, 1L)
+        
+      }
+      
+      result <- merged[, c("species", "world_id", "year", "month", "exposure_max", "exposure_min")] 
+      
+      return(result)
+      
+    }
+    
   } else {
-    climate_data %>% filter(world_id %in% spp_data$world_id)
+    
+    if(!is.null(month.specific)) warning("`month` column not present. Ignoring `month.specific` argument.", call. = FALSE)
+    
+    niche <- spp_niche |> 
+      summarise(niche_max = max(niche_max),
+                niche_min = min(niche_min))
+    
+    merged <- merge(spp_matrix, niche)
+    
+    merged$exposure_max <- as.integer(pmax(merged$value - merged$niche_max, 0))
+    merged$exposure_min <- as.integer(pmin(merged$value - merged$niche_min, 0))
+    merged$species <- factor(species.names)
+    
+    if(!return.magnitude) {
+      
+      merged$exposure_max <- ifelse(merged$exposure_max == 0, 0L, 1L)
+      merged$exposure_min <- ifelse(merged$exposure_min == 0, 0L, 1L)
+      
+    }
+    
+    result <- merged[, c("species", "world_id", "year", "exposure_max", "exposure_min")] 
+    
+    if(long.format) {
+      
+      result <- result |> 
+        select(-exposure_min) |>
+        pivot_wider(values_from = exposure_max, 
+        names_from = year) 
+      
+    }
+    
+    return(result)
+    
   }
-
-  spp_matrix <- spp_matrix %>% na.omit()
-
-  # Extract niche limits for the species
-  spp_niche <- niche %>%
-    filter(species %in% spp_name)
-
-  # Compute exposure (1 if suitable, 0 if unsuitable)
-  spp_matrix <- spp_matrix %>%
-    mutate(across(2:ncol(spp_matrix), ~ case_when(
-      . <= spp_niche$niche_max ~ 1,
-      . > spp_niche$niche_max ~ 0
-    )))
-
-  # Add species column and rearrange
-  spp_matrix$species <- spp_name
-  spp_matrix <- spp_matrix %>%
-    relocate(species)
-
-  return(spp_matrix)
+    
+  
 }

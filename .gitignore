@@ -144,9 +144,16 @@ version.py
 .pixi
 *.egg-info
 
+.Rproj.user
+
+# tier_1 file that exceedes 25Mb
+tier_1/data/climate/historical_array.rds
+
+
 outputs/
 
 *.DS_Store
 
 # Ignore processed species files
 data-raw/bien_ranges/processed/
+
